@@ -4,6 +4,7 @@ module AcademicBenchmarksApi
     require 'openssl'
     require 'base64'
     require 'net/http'
+    Dir[AcademicBenchmarksApi::Engine.root.join("app/serializer/academic_benchmarks_api/**/*.rb")].each {|f| require f}
 
     def ab_api_url
       "https://api.academicbenchmarks.com/rest/v4"
@@ -32,7 +33,16 @@ module AcademicBenchmarksApi
        "auth.expires": auth_exp}
     end
 
-    def ab_request(action, p)
+    def fetch_facet(json, target)
+      facets  = json['meta']['facets']
+      facets.each  do |facet|
+        if facet['facet'] == target
+          return facet
+        end
+      end
+    end
+
+    def ab_request(action, p, raw = false)
       uri = URI.parse( "#{ab_api_url}/#{action}" );
 
       http = Net::HTTP.new(uri.host, uri.port)
@@ -42,14 +52,30 @@ module AcademicBenchmarksApi
       response = http.request(req)
 
       #URI.decode(p.to_query)
-      render :json => response.body
+      if params[:raw] || raw
+        render :json => response.body
+        return nil
+      end
+      return ActiveSupport::JSON.decode(response.body)
+    end
+
+    def serialize(details, serializer, child_route)
+      output = []
+      details.each do |d|
+        output.push serializer.serialize(d, child_route)
+      end
+      render :json => {data: output}
     end
 
     def authorities
       p = auth_params
       p[:facet] = "document.publication.authorities"
       p[:limit] = 0
-      ab_request("standards", p)
+      json = ab_request("standards", p)
+      if json
+        serialize fetch_facet(json, p[:facet])['details'], ::AcademicBenchmarksApi::FacetSerializer, 'standards/publications'
+      end
+
     end
 
     def publications
@@ -58,25 +84,34 @@ module AcademicBenchmarksApi
       p[:filter] = {:standards => "(document.publication.authorities.guid eq '#{guid}')"}
       p[:facet] = "document.publication"
       p[:limit] = 0
-      ab_request("standards", p)
+      json  = ab_request("standards", p)
+      if json
+        serialize fetch_facet(json, p[:facet])['details'], ::AcademicBenchmarksApi::FacetSerializer, 'standards/documents'
+      end
     end
 
     def documents
-      guid = "964E0FEE-AD71-11DE-9BF2-C9169DFF4B22"
+      guid = params[:guid] || "964E0FEE-AD71-11DE-9BF2-C9169DFF4B22"
       p = auth_params
       p[:filter] = {:standards => "(document.publication.guid eq '#{guid}')"}
       p[:facet] = "document"
       p[:limit] = 0
-      ab_request("standards", p)
+      json  = ab_request("standards", p)
+      if json
+        serialize fetch_facet(json, p[:facet])['details'], ::AcademicBenchmarksApi::FacetSerializer, 'standards/sections'
+      end
     end
 
     def sections
-      guid = "CF6A375C-67AD-11DF-AB5F-995D9DFF4B22"
+      guid = params[:guid] || "CF6A375C-67AD-11DF-AB5F-995D9DFF4B22"
       p = auth_params
       p[:filter] = {:standards => "(document.guid eq '#{guid}')"}
       p[:facet] = "section"
       p[:limit] = 0
-      ab_request("standards", p)
+      json  = ab_request("standards", p)
+      if json
+        serialize fetch_facet(json, p[:facet])['details'], ::AcademicBenchmarksApi::FacetSerializer, 'standards/standards'
+      end
     end
 
     def standards
@@ -86,7 +121,7 @@ module AcademicBenchmarksApi
       p[:fields] = {:standards => "seq,number,statement,children"} #
       p[:filter] = {:standards => "(section.guid eq '#{guid}' and level eq '#{level}')"} # and level eq 1
       p[:sort] = {:standards => "seq"}
-      ab_request("standards", p)
+      ab_request("standards", p, true)
     end
 
     def children
@@ -95,7 +130,7 @@ module AcademicBenchmarksApi
       p[:fields] = {:standards => "seq,number,statement,children"} #
       p[:filter] = {:standards => "(parent.id eq '#{guid}')"}
       p[:sort] = {:standards => "seq"}
-      ab_request("standards", p)
+      ab_request("standards", p, true)
     end
 
     def detail
@@ -103,7 +138,7 @@ module AcademicBenchmarksApi
       p = auth_params
       p[:fields] = {:standards => "statement,section,document,education_levels,disciplines,number,parent,utilizations"} # ,topics,concepts,key_ideas
       #p[:include] = "topics,concepts"
-      ab_request("standards/#{guid}", p)
+      ab_request("standards/#{guid}", p, true)
     end
 
 
