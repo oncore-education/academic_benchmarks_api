@@ -136,7 +136,8 @@ module AcademicBenchmarksApi
     def detail
       guid = params[:guid] || "7E7C05D8-7440-11DF-93FA-01FD9CFF4B22"
       p = auth_params
-      p[:fields] = {:standards => "statement,section,document,education_levels,disciplines,number,parent,utilizations"} # ,topics,concepts,key_ideas
+      p[:fields] = {:standards => "statement,section,document,education_levels,disciplines,number,parent,utilizations,derivatives,peers"} # ,topics,concepts,key_ideas
+      #p[:include] = 'derivatives,peers'
       #p[:include] = "topics,concepts"
       ab_request("standards/#{guid}", p, true)
     end
