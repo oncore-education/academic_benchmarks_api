@@ -9,7 +9,7 @@ Gem::Specification.new do |s|
   s.version     = AcademicBenchmarksApi::VERSION
   s.authors     = ["Jacob Bullock"]
   s.email       = ["jacob.bullock@gmail.com"]
-  s.homepage    = "http://onco.re"
+  s.homepage    = "https://github.com/oncore-education/academic_benchmarks_api"
   s.summary     = "Summary of AcademicBenchmarksApi."
   s.description = "Description of AcademicBenchmarksApi."
   s.license     = "MIT"
