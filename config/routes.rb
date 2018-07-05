@@ -7,4 +7,5 @@ AcademicBenchmarksApi::Engine.routes.draw do
   match '/standards', to: 'api#standards', via: [:get, :post]
   match '/children', to: 'api#children', via: [:get, :post]
   match '/detail', to: 'api#detail', via: [:get, :post]
+  match '/alignable', to: 'api#alignable', via: [:get, :post]
 end

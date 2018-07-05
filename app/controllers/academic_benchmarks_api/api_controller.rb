@@ -114,34 +114,71 @@ module AcademicBenchmarksApi
       end
     end
 
-    def standards
-      guid = params[:guid] ||"5E1148F4-7377-11DF-A1E8-223D9DFF4B22"
+    def standards(guid = nil, raw = true)
+      guid ||= params[:guid] ||"5E1148F4-7377-11DF-A1E8-223D9DFF4B22"
+      puts guid
       level = params[:level] || "1"
       p = auth_params
-      p[:fields] = {:standards => "seq,number,statement,children"} #
+      p[:fields] = {:standards => "seq,number,statement,children,utilizations"} #
       p[:filter] = {:standards => "(section.guid eq '#{guid}' and level eq '#{level}')"} # and level eq 1
       p[:sort] = {:standards => "seq"}
-      ab_request("standards", p, true)
+      ab_request("standards", p, raw)
     end
 
-    def children
-      guid = params[:guid] ||"2CE7D14A-74F7-11DF-80DD-6B359DFF4B22"
+    def children(guid = nil, raw = true)
+      guid ||= params[:guid] ||"2CE7D14A-74F7-11DF-80DD-6B359DFF4B22"
       p = auth_params
-      p[:fields] = {:standards => "seq,number,statement,children"} #
+      p[:fields] = {:standards => "seq,number,statement,children,utilizations"} #
       p[:filter] = {:standards => "(parent.id eq '#{guid}')"}
       p[:sort] = {:standards => "seq"}
-      ab_request("standards", p, true)
+      ab_request("standards", p, raw)
     end
 
-    def detail
-      guid = params[:guid] || "7E7C05D8-7440-11DF-93FA-01FD9CFF4B22"
+    def detail(guid = nil, raw = true)
+      guid ||= params[:guid] || "7E7C05D8-7440-11DF-93FA-01FD9CFF4B22"
       p = auth_params
       p[:fields] = {:standards => "statement,section,document,education_levels,disciplines,number,parent,utilizations,derivatives,peers"} # ,topics,concepts,key_ideas
       #p[:include] = 'derivatives,peers'
       #p[:include] = "topics,concepts"
-      ab_request("standards/#{guid}", p, true)
+      ab_request("standards/#{guid}", p, raw)
     end
 
+    def alignable
+      guid = params[:guid] ||"6C234034-6EC0-11DF-AB2D-366B9DFF4B22"
+      details = detail(guid, false)
+      stack = []
+      if(details['errors'].nil?)
+        if details['data']['attributes']['utilizations'].present?
+          details['data']['attributes']['utilizations'].each do |util|
+            stack.push details['data']['id'] if util['type'] == 'alignable'
+          end
+        end
+        stack.concat alignable_children(details['data']['id'])
+      else
+        details = standards(guid, false)
+        puts details
+        details['data'].each do |standard|
+          puts standard
+          stack.concat alignable_children(standard['id'])
+        end
+      end
+
+      render :json => stack
+    end
+
+    def alignable_children(guid)
+      stack = []
+      children = children(guid, false)
+      children['data'].each do |child|
+        if child['attributes']['utilizations'].present?
+          child['attributes']['utilizations'].each do |util|
+            stack.push child['id'] if util['type'] == 'alignable'
+          end
+        end
+        stack.concat alignable_children(child['id'])
+      end
+      stack
+    end
 
     # UNUSED #
     def education_levels
