@@ -73,7 +73,8 @@ module AcademicBenchmarksApi
       p[:limit] = 0
       json = ab_request("standards", p)
       if json
-        serialize fetch_facet(json, p[:facet])['details'], ::AcademicBenchmarksApi::FacetSerializer, 'standards/publications'
+        details = fetch_facet(json, p[:facet])['details']
+        serialize details, ::AcademicBenchmarksApi::FacetSerializer, 'standards/publications'
       end
 
     end
@@ -108,9 +109,12 @@ module AcademicBenchmarksApi
       p[:filter] = {:standards => "(document.guid eq '#{guid}')"}
       p[:facet] = "section"
       p[:limit] = 0
+      p[:sort] = {:standards => "seq"}
       json  = ab_request("standards", p)
       if json
-        serialize fetch_facet(json, p[:facet])['details'], ::AcademicBenchmarksApi::FacetSerializer, 'standards/standards'
+        details = fetch_facet(json, p[:facet])['details']
+        details = details.sort_by { |f| f['data']['seq'] }
+        serialize details, ::AcademicBenchmarksApi::FacetSerializer, 'standards/standards'
       end
     end
 
